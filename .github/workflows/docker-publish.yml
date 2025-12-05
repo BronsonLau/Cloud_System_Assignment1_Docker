@@ -52,7 +52,20 @@ jobs:
             ghcr.io/bronsonlau/ci-cd-practice:latest
             ghcr.io/bronsonlau/ci-cd-practice:${{ github.sha }}  
 
-      - name: Send Webhook Notification
+      - name: Notify DingTalk
         if: always()
+        env:
+          DINGTALK_WEBHOOK: ${{ secrets.ROBOT }}
+          DINGTALK_SECRET: ${{ secrets.SEC }}
         run: |
-          curl -s -X POST -H "Content-Type: application/json" -d "{\"content\":\"${{ github.repository }} 构建结果：${{ job.status }}\"}" "${{ secrets.ROBOT }}"
+          timestamp=$(date +%s000)
+          sign=$(echo -n "$timestamp
+$DINGTALK_SECRET" | openssl dgst -sha256 -hmac "$DINGTALK_SECRET" -binary | base64 | jq -sRr @uri)
+
+          full_url="${DINGTALK_WEBHOOK}&timestamp=${timestamp}&sign=${sign}"
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"msgtype\": \"text\", \"text\": {\"content\": \"GitHub Actions 构建结果：${{ job.status }}\"}}" \
+            "$full_url"
+
