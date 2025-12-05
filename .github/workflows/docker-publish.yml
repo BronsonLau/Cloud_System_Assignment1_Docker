@@ -55,4 +55,4 @@ jobs:
       - name: Send Webhook Notification
         if: always()
         run: |
-          curl -s -X POST -H "Content-Type: application/json" -d "{\"content\":\"${{ github.repository }} 构建结果：${{ job.status }}\"}" "${{ secrets.WEBHOOK_URL }}"
+          curl -s -X POST -H "Content-Type: application/json" -d "{\"content\":\"${{ github.repository }} 构建结果：${{ job.status }}\"}" "${{ secrets.ROBOT }}"
