@@ -55,15 +55,9 @@ jobs:
       - name: Notify DingTalk
         if: always()
         run: |
-          # ---------------------------
-          # 1. 设置环境变量
-          # ---------------------------
           DINGTALK_WEBHOOK="${{ secrets.ROBOT }}"
           DINGTALK_SECRET="${{ secrets.SEC }}"
 
-          # ---------------------------
-          # 2. 生成签名
-          # ---------------------------
           timestamp=$(($(date +%s%N)/1000000))
           string_to_sign="${timestamp}"$'\n'"${DINGTALK_SECRET}"
           raw_sign=$(echo -n "$string_to_sign" | openssl dgst -sha256 -hmac "$DINGTALK_SECRET" -binary | base64)
@@ -82,48 +76,10 @@ jobs:
             done
             LC_COLLATE=$old_lc_collate
           }
-
           url_sign=$(urlencode "$raw_sign")
           full_url="${DINGTALK_WEBHOOK}&timestamp=${timestamp}&sign=${url_sign}"
 
-          # ---------------------------
-          # 3. 收集构建信息
-          # ---------------------------
-          REPO_NAME="${{ github.repository }}"
-          BRANCH_NAME="${{ github.ref_name }}"
-          COMMIT_SHA="${{ github.sha::7 }}"
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          ACTOR="${{ github.actor }}"
-          JOB_STATUS="${{ job.status }}"
-          START_TIME="${{ github.run_started_at }}"
-          RUN_ID="${{ github.run_id }}"
-          BUILD_URL="https://github.com/${REPO_NAME}/actions/runs/${RUN_ID}"
-
-          # 计算耗时（秒）
-          END_TIMESTAMP=$(date +%s)
-          START_TIMESTAMP=$(date -d "$START_TIME" +%s)
-          DURATION=$((END_TIMESTAMP-START_TIMESTAMP))
-
-          # ---------------------------
-          # 4. 构建消息
-          # ---------------------------
-          MSG="【GitHub Actions 构建通知】\n"
-          MSG+="仓库: ${REPO_NAME}\n"
-          MSG+="分支: ${BRANCH_NAME}\n"
-          MSG+="提交: ${COMMIT_SHA} - ${COMMIT_MSG}\n"
-          MSG+="提交人: ${ACTOR}\n"
-          MSG+="状态: ${JOB_STATUS}\n"
-          MSG+="耗时: ${DURATION} 秒\n"
-          MSG+="详情: ${BUILD_URL}"
-
-          # ---------------------------
-          # 5. 发送消息
-          # ---------------------------
           curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"msgtype\":\"text\",\"text\":{\"content\":\"${MSG}\"},\"at\":{\"isAtAll\":false}}" \
+            -d "{\"msgtype\":\"text\",\"text\":{\"content\":\"GitHub Actions 构建结果：${{ job.status }}\"},\"at\":{\"isAtAll\":false}}" \
             "$full_url"
-
-
-
-
