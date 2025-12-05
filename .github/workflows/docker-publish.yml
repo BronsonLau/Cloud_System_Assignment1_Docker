@@ -54,28 +54,37 @@ jobs:
 
       - name: Notify DingTalk
         if: always()
-        env:
-          DINGTALK_WEBHOOK: ${{ secrets.ROBOT }}
-          DINGTALK_SECRET: ${{ secrets.SEC }}
         run: |
-          timestamp=$(date +%s000)
+          DINGTALK_WEBHOOK="${{ secrets.ROBOT }}"
+          DINGTALK_SECRET="${{ secrets.SEC }}"
 
-          # 1. 生成 string_to_sign (钉钉文档要求必须 timestamp + "\n" + secret)
+          timestamp=$(($(date +%s%N)/1000000))
           string_to_sign="${timestamp}"$'\n'"${DINGTALK_SECRET}"
-
-          # 2. HMAC-SHA256 + Base64
           raw_sign=$(echo -n "$string_to_sign" | openssl dgst -sha256 -hmac "$DINGTALK_SECRET" -binary | base64)
 
-          # 3. URL Encode（用 python 最安全，且不会破坏 base64）
-          url_sign=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read()))" <<< "$raw_sign")
-
-          # 4. 组合最终 webhook URL
+          urlencode() {
+            old_lc_collate=$LC_COLLATE
+            LC_COLLATE=C
+            local length="${#1}"
+            local i c
+            for (( i = 0; i < length; i++ )); do
+              c="${1:i:1}"
+              case $c in
+                [a-zA-Z0-9.~_-]) printf "$c" ;;
+                *) printf '%%%02X' "'$c" ;;
+              esac
+            done
+            LC_COLLATE=$old_lc_collate
+          }
+          url_sign=$(urlencode "$raw_sign")
           full_url="${DINGTALK_WEBHOOK}&timestamp=${timestamp}&sign=${url_sign}"
 
-          # 5. 发送消息
-          curl -X POST \
+          curl -s -X POST \
             -H "Content-Type: application/json" \
-            -d "{\"msgtype\": \"text\", \"text\": {\"content\": \"GitHub Actions 构建结果：${{ job.status }}\"}}" \
+            -d "{\"msgtype\":\"text\",\"text\":{\"content\":\"GitHub Actions 构建结果：${{ job.status }}\"},\"at\":{\"isAtAll\":false}}" \
             "$full_url"
+
+
+
 
 
