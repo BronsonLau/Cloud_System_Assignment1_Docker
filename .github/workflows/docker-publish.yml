@@ -60,25 +60,21 @@ jobs:
         run: |
           timestamp=$(date +%s000)
 
-          # 1. 生成符合钉钉文档的 string_to_sign
+          # 1. 生成 string_to_sign (钉钉文档要求必须 timestamp + "\n" + secret)
           string_to_sign="${timestamp}\n${DINGTALK_SECRET}"
 
-          # 2. 按文档要求使用 hmac-sha256 + base64
+          # 2. HMAC-SHA256 + Base64
           raw_sign=$(echo -n "$string_to_sign" | openssl dgst -sha256 -hmac "$DINGTALK_SECRET" -binary | base64)
 
-          # 3. 按文档要求进行 URL Encode（使用 Python 标准库）
-          sign=$(python3 - <<EOF
-import urllib.parse
-import sys
-print(urllib.parse.quote(sys.stdin.read()))
-EOF
-          <<< "$raw_sign")
+          # 3. URL Encode（用 python 最安全，且不会破坏 base64）
+          url_sign=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.stdin.read()))" <<< "$raw_sign")
 
-          # 4. 生成完整请求 URL
-          full_url="${DINGTALK_WEBHOOK}&timestamp=${timestamp}&sign=${sign}"
+          # 4. 组合最终 webhook URL
+          full_url="${DINGTALK_WEBHOOK}&timestamp=${timestamp}&sign=${url_sign}"
 
           # 5. 发送消息
           curl -X POST \
             -H "Content-Type: application/json" \
             -d "{\"msgtype\": \"text\", \"text\": {\"content\": \"GitHub Actions 构建结果：${{ job.status }}\"}}" \
-            "$full_url"
+            \"$full_url\"
+
