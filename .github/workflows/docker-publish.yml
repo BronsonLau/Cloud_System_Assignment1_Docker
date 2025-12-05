@@ -51,4 +51,3 @@ jobs:
           tags: |
             ghcr.io/bronsonlau/ci-cd-practice:latest
             ghcr.io/bronsonlau/ci-cd-practice:${{ github.sha }}  
-            # 修改tag
