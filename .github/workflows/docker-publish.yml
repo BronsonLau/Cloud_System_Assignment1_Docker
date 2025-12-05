@@ -76,5 +76,6 @@ jobs:
           curl -X POST \
             -H "Content-Type: application/json" \
             -d "{\"msgtype\": \"text\", \"text\": {\"content\": \"GitHub Actions 构建结果：${{ job.status }}\"}}" \
-            "$full_url\
+            "$full_url"
+
 
